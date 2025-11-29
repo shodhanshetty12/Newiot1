@@ -1,0 +1,60 @@
+/* Status Report Page Styles */
+
+/* Diagnostics container - prevent overflow */
+#statusLog {
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  white-space: pre !important;
+  font-family: monospace !important;
+}
+
+/* Mode indicator - prevent duplication */
+.mode-indicator {
+  display: inline-block;
+}
+
+/* Ensure charts container doesn't overflow */
+.chart-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Card layout stability */
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Simulation control styling */
+#simulationControl {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#simulationControl button {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+#simulationControl .btn-success {
+  background: var(--success, #10b981);
+  color: white;
+}
+
+#simulationControl .btn-error {
+  background: var(--error, #ef4444);
+  color: white;
+}
+
+#simStatus {
+  font-size: 11px;
+  color: var(--muted);
+}

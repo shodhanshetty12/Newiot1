@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Irrigation Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background-image: url('wallpaper.jpg'); background-size: cover; background-attachment: fixed; }
+    .container { max-width: 1150px; }
+  </style>
+</head>
+<body class="page-dashboard">
+  <!-- Navigation -->
+  <div class="navbar">
+    <div class="nav-links">
+      <a href="index.html">🏠 Dashboard</a>
+      <a href="pages/pump-control.html">⚙ Pump Control</a>
+      <a href="pages/water-usage.html">💧 Water Usage</a>
+      <a href="pages/status-report.html">📊 Status Report</a>
+      <a href="pages/notifications.html">🔔 Notifications</a>
+      <a href="pages/reports.html">🧾 Reports</a>
+      <a href="pages/settings.html">🔧 Settings</a>
+    </div>
+    <div class="nav-status">
+      <span class="badge badge-primary" data-app-nav="mode">Mode: --</span>
+      <span class="badge badge-success" data-app-nav="pump">Pump: --</span>
+      <span class="badge badge-secondary" data-app-nav="water">Water: 0.0 L</span>
+    </div>
+    <div class="nav-controls">
+      <label class="toggle">
+        <input type="checkbox" data-app-toggle="theme">
+        <span>Dark</span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" data-app-toggle="mode">
+        <span>Hardware</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Smart Irrigation Dashboard</h1>
+
+    <!-- Controls -->
+    <div class="controls flex flex-col gap-3 mb-4">
+      <div class="flex gap-2 flex-wrap">
+        <button id="startBtn" class="success">Start Simulation</button>
+        <button id="stopBtn" class="error">Stop Simulation</button>
+      </div>
+      <div class="flex gap-4 items-center">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" id="autoModeToggle"> 
+          <span>Auto Pump Mode</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" id="autoScrollToggle"> 
+          <span>Auto Scroll</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Pump and Water Usage -->
+    <div class="status-info">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="status-indicator status-offline" id="pumpStatusIndicator"></span>
+        <p id="pumpStatus" class="mb-0">Pump Status: OFF</p>
+      </div>
+      <p id="waterUsage" class="mb-0">Water Used: 0 L</p>
+    </div>
+
+    <!-- Simulation Data Table -->
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Soil Moisture</th>
+          <th>Temperature</th>
+          <th>Humidity</th>
+        </tr>
+      </thead>
+      <tbody id="simulationTableBody"></tbody>
+    </table>
+
+    <div id="status"></div>
+  </div>
+
+  <!-- Load external JS -->
+  <script src="assets/js/common.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.body.style.backgroundImage = "url('wallpaper.jpg')";
+  </script>
+</body>
+</html>
