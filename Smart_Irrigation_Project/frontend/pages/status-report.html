@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Report</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); background-size: cover; background-attachment: fixed; }
+    .container { max-width: 1180px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: stretch; }
+    .card { background: var(--overlay); padding: 16px; border-radius: 10px; border: 1px solid var(--border); height: 360px; display:flex; flex-direction:column; }
+    h2 { margin: 0 0 10px; font-size: 18px; color: var(--text); }
+    .chart-wrap { position: relative; flex:1; min-height: 0; }
+    canvas { width: 100% !important; height: 100% !important; display:block; }
+    .meters { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .meter { padding: 12px; border-radius: 10px; background: var(--overlay); border: 1px solid var(--border); }
+    .value { font-size: 28px; font-weight: 700; color: var(--text); }
+    .label { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div class="nav-links">
+      <a href="../index.html">🏠 Dashboard</a>
+      <a href="pump-control.html">⚙ Pump Control</a>
+      <a href="water-usage.html">💧 Water Usage</a>
+      <a href="status-report.html">📊 Status Report</a>
+      <a href="notifications.html">🔔 Notifications <span data-notif-count></span></a>
+      <a href="reports.html">🧾 Reports</a>
+      <a href="settings.html">🔧 Settings</a>
+    </div>
+    <div class="nav-status">
+      <span class="badge badge-primary" data-app-nav="mode">Mode: --</span>
+      <span class="badge badge-success" data-app-nav="pump">Pump: --</span>
+      <span class="badge badge-secondary" data-app-nav="water">Water: 0.0 L</span>
+      <span class="badge badge-warning" data-notif-badge style="display:none;">0</span>
+    </div>
+    <div class="nav-controls">
+      <label class="toggle">
+        <input type="checkbox" data-app-toggle="theme">
+        <span>Dark</span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" data-app-toggle="mode">
+        <span>Hardware</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h1 style="margin:0;">24h Status Report</h1>
+      <div id="simulationControl" style="display:flex; gap:8px; align-items:center;">
+        <span class="badge badge-secondary" id="appModeBadge">Mode: SIMULATION</span>
+        <button id="simStartBtn" class="btn btn-success" style="padding:6px 12px; font-size:12px;">Start</button>
+        <button id="simStopBtn" class="btn btn-error" style="padding:6px 12px; font-size:12px; display:none;">Stop</button>
+        <span style="font-size:11px; color:var(--muted);" id="simStatus">Stopped</span>
+      </div>
+    </div>
+    <div id="updatedAt" style="margin:8px 0; color: var(--muted); font-size: 12px;">Last updated: --</div>
+    <div class="grid">
+      <div class="card">
+        <h2>Water Usage</h2>
+        <div class="chart-wrap">
+          <canvas id="waterCumulativeChart"></canvas>
+          <div class="label" style="margin-top:4px; font-size:11px;">
+            Cumulative Water (24h)
+          </div>
+        </div>
+      </div>
+      <div class="card"><h2>Soil Moisture</h2><div class="chart-wrap"><canvas id="moistureChart"></canvas></div></div>
+      <div class="card"><h2>Temperature</h2><div class="chart-wrap"><canvas id="tempChart"></canvas></div></div>
+      <div class="card"><h2>Humidity</h2><div class="chart-wrap"><canvas id="humChart"></canvas></div></div>
+    </div>
+    <div class="meters" style="margin-top:20px;">
+      <div class="meter"><div class="label">Current Temperature</div><div id="currentTemp" class="value">-- °C</div></div>
+      <div class="meter"><div class="label">Current Humidity</div><div id="currentHumidity" class="value">-- %</div></div>
+      <div class="meter"><div class="label">Current Moisture</div><div id="currentMoisture" class="value">--</div></div>
+      <div class="meter"><div class="label">Total Water (24h)</div><div id="totalWater24h" class="value">-- L</div></div>
+    </div>
+    <div style="margin-top:16px; display:flex; gap:16px; align-items:flex-start;">
+      <span class="badge badge-secondary" id="dataModeBadge">Mode: --</span>
+      <div style="flex:1;">
+        <div class="label">Diagnostics</div>
+        <pre id="statusLog" style="max-height:200px; overflow-y:auto; overflow-x:hidden; white-space:pre; font-size:11px; background:var(--overlay); border:1px solid var(--border); padding:8px; border-radius:8px; font-family:monospace;"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../assets/js/global-state.js"></script>
+  <script src="../assets/js/common.js"></script>
+  <script src="../assets/js/websocket-client.js"></script>
+  <script src="../assets/js/mock-sensors.js"></script>
+  <script src="../assets/js/notifications.js"></script>
+  <script src="../assets/js/status-report.js"></script>
+  <script>
+    // Simulation control
+    const simStartBtn = document.getElementById("simStartBtn");
+    const simStopBtn = document.getElementById("simStopBtn");
+    const simStatus = document.getElementById("simStatus");
+    const appModeBadge = document.getElementById("appModeBadge");
+
+    function updateSimulationUI() {
+      if (window.MockSensors && window.MockSensors.isRunning()) {
+        simStartBtn.style.display = "none";
+        simStopBtn.style.display = "inline-block";
+        simStatus.textContent = "Running";
+        simStatus.style.color = "var(--success)";
+      } else {
+        simStartBtn.style.display = "inline-block";
+        simStopBtn.style.display = "none";
+        simStatus.textContent = "Stopped";
+        simStatus.style.color = "var(--muted)";
+      }
+      
+      if (window.APP_MODE) {
+        const mode = window.APP_MODE.mode;
+        appModeBadge.textContent = `Mode: ${mode}`;
+      }
+    }
+
+    if (simStartBtn) {
+      simStartBtn.addEventListener("click", () => {
+        if (window.MockSensors) {
+          window.MockSensors.start();
+          // Update global state
+          if (window.GlobalState) {
+            window.GlobalState.updateState({ simulationRunning: true });
+          }
+          if (window.APP_MODE) {
+            window.APP_MODE.setSimulationRunning(true);
+          }
+          updateSimulationUI();
+        }
+      });
+    }
+
+    if (simStopBtn) {
+      simStopBtn.addEventListener("click", () => {
+        if (window.MockSensors) {
+          window.MockSensors.stop();
+          // Update global state
+          if (window.GlobalState) {
+            window.GlobalState.updateState({ simulationRunning: false });
+          }
+          if (window.APP_MODE) {
+            window.APP_MODE.setSimulationRunning(false);
+          }
+          updateSimulationUI();
+        }
+      });
+    }
+    
+    // Restore simulation state on page load
+    if (window.GlobalState) {
+      window.GlobalState.loadState();
+      const state = window.GlobalState.getState();
+      if (state.simulationRunning && window.MockSensors && !window.MockSensors.isRunning()) {
+        // Auto-resume simulation if it was running
+        window.MockSensors.start();
+        if (window.APP_MODE) {
+          window.APP_MODE.setSimulationRunning(true);
+        }
+        updateSimulationUI();
+      }
+    }
+
+    // Listen to APP_MODE changes
+    if (window.APP_MODE) {
+      window.APP_MODE.onChange(() => {
+        updateSimulationUI();
+      });
+    }
+
+    // Initial update
+    updateSimulationUI();
+    setInterval(updateSimulationUI, 1000);
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pump Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); background-size: cover; background-attachment: fixed; }
+    .container { max-width: 900px; }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <div class="navbar">
+    <div class="nav-links">
+      <a href="../index.html">🏠 Dashboard</a>
+      <a href="pump-control.html">⚙ Pump Control</a>
+      <a href="water-usage.html">💧 Water Usage</a>
+      <a href="status-report.html">📊 Status Report</a>
+      <a href="notifications.html">🔔 Notifications</a>
+      <a href="reports.html">🧾 Reports</a>
+      <a href="settings.html">🔧 Settings</a>
+    </div>
+    <div class="nav-status">
+      <span class="badge badge-primary" data-app-nav="mode">Mode: --</span>
+      <span class="badge badge-success" data-app-nav="pump">Pump: --</span>
+      <span class="badge badge-secondary" data-app-nav="water">Water: 0.0 L</span>
+    </div>
+    <div class="nav-controls">
+      <label class="toggle">
+        <input type="checkbox" data-app-toggle="theme">
+        <span>Dark</span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" data-app-toggle="mode">
+        <span>Hardware</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Pump Control</h1>
+    
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="card-title">Manual Control</h3>
+      </div>
+      <div class="card-body">
+        <div class="flex gap-3 mb-4">
+          <button id="manualOnBtn" class="success">Turn Pump ON</button>
+          <button id="manualOffBtn" class="error">Turn Pump OFF</button>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="status-indicator status-offline" id="pumpStatusIndicator"></span>
+          <p id="pumpStatus" class="mb-0">Pump Status: OFF</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/global-state.js"></script>
+  <script src="../assets/js/common.js"></script>
+  <script>
+    document.body.style.backgroundImage = "url('../wallpaper.jpg')";
+    const pumpStatusEl = document.getElementById("pumpStatus");
+    const manualOnBtn = document.getElementById("manualOnBtn");
+    const manualOffBtn = document.getElementById("manualOffBtn");
+
+    // Load global state and restore pump status (NEVER default to OFF)
+    if (window.GlobalState) {
+      window.GlobalState.loadState();
+      const state = window.GlobalState.getState();
+      // Always restore from global state - never reset to OFF
+      if (state.pumpState) {
+        updatePumpStatus(state.pumpState);
+      } else {
+        // If no state exists, check backend but don't override global state
+        updatePumpStatus("OFF");
+      }
+    } else {
+      // Fallback if GlobalState not available
+      updatePumpStatus("OFF");
+    }
+
+    function updatePumpStatus(status) {
+      pumpStatusEl.textContent = `Pump Status: ${status}`;
+      pumpStatusEl.style.color = status === "ON" ? "green" : "red";
+      
+      // Update status indicator
+      const statusIndicator = document.getElementById("pumpStatusIndicator");
+      if (statusIndicator) {
+        statusIndicator.className = `status-indicator ${status === "ON" ? "status-online" : "status-offline"}`;
+        statusIndicator.textContent = status;
+      }
+      
+      // Update global state
+      if (window.GlobalState) {
+        window.GlobalState.updateState({ pumpState: status });
+      }
+    }
+
+    manualOnBtn.addEventListener("click", async () => {
+      try {
+        await fetch("/api/hardware/pump", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "ON" }),
+          cache: 'no-store'
+        });
+        updatePumpStatus("ON");
+      } catch (err) {
+        console.error("Failed to turn pump ON:", err);
+      }
+    });
+
+    manualOffBtn.addEventListener("click", async () => {
+      try {
+        await fetch("/api/hardware/pump", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "OFF" }),
+          cache: 'no-store'
+        });
+        updatePumpStatus("OFF");
+      } catch (err) {
+        console.error("Failed to turn pump OFF:", err);
+      }
+    });
+
+    // Cross-page state sync
+    function attachStatusUpdates() {
+      if (window.AppShell) {
+        window.AppShell.onStatus((status) => {
+          updatePumpStatus((status?.pump_status || "OFF").toUpperCase());
+        });
+        return;
+      }
+      async function syncStatus(){
+        try {
+          const r = await fetch('/api/status', { cache: 'no-store' });
+          const j = await r.json();
+          const pumpState = (j.pump_status || 'OFF').toUpperCase();
+          updatePumpStatus(pumpState);
+          
+          // Also check global state
+          if (window.GlobalState) {
+            const globalState = window.GlobalState.getState();
+            if (globalState.pumpState && globalState.pumpState !== pumpState) {
+              // Global state takes precedence if different
+              updatePumpStatus(globalState.pumpState);
+            }
+          }
+        } catch(e) {}
+      }
+      syncStatus();
+      setInterval(syncStatus, 3000);
+    }
+    attachStatusUpdates();
+  </script>
+</body>
+</html>
